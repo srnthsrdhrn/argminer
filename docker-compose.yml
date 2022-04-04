@@ -1,0 +1,63 @@
+version: "3"
+services:
+  web:
+    restart: always
+    build:
+      context: .
+    image: argminer
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    volumes:
+      - argminer_server_data:/usr/src/app/media/
+    links:
+      - postgres:postgres
+      - redis:redis
+    env_file:
+      - .env
+    command: bash run_web.sh
+  postgres:
+    restart: always
+    image: postgres:9.5
+    ports:
+      - "5433:5432"
+    volumes:
+      - argminer_pg_data:/var/lib/postgresql/data/
+    env_file:
+      - .env
+  redis:
+    restart: always
+    image: redis:latest
+    expose:
+      - 6379
+    ports:
+    - 6379:6378
+
+  worker:
+    restart: always
+    deploy:
+      replicas: 1
+    env_file:
+      - .env
+    image: argminer
+    volumes:
+      - argminer_server_data:/usr/src/app/media/
+    links:
+      - postgres:postgres
+      - redis:redis
+    command: sh '/usr/src/app/run_celery.sh'
+  flower:
+    restart: always
+    image: argminer
+    env_file:
+      - .env
+    links:
+      - redis:redis
+    ports:
+      - "5555:5555"
+    command: sh '/usr/src/app/run_flower.sh'
+
+volumes:
+  argminer_pg_data:
+  argminer_server_data:
