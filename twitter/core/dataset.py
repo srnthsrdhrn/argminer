@@ -1,5 +1,5 @@
 import pickle
-from typing import Union, List
+from typing import Union, List,Any
 from core.dataset import Dataset, DataPoint
 from core.exceptions import IllegalTypeException
 from twitter.core.tokenizer import TwitterTokenizer
@@ -11,7 +11,7 @@ class Tweet(DataPoint):
     Class that represents a single tweet.
     """
 
-    def __init__(self, tokenizer: TwitterTokenizer = None, **parameters: dict):
+    def __init__(self, tokenizer: Union[TwitterTokenizer,Any] = None, **parameters: dict):
         super().__init__(**parameters)
         self._text = None
         self.tweet_id = None

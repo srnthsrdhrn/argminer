@@ -25,6 +25,7 @@ SECRET_KEY = 'django-insecure-)09-yme-%tle2p*prk2*b#03o&x^&n1n)#-g8n8)u&9fbkjq9w
 
 # SECURITY WARNING: don't run with debug turned on in production!
 IS_POSTGRES = os.environ.get('IS_PRODUCTION', False)
+IS_DEV = os.environ.get("IS_DEV",False)
 DEBUG = not IS_POSTGRES
 
 ALLOWED_HOSTS = ['*']
@@ -78,34 +79,36 @@ WSGI_APPLICATION = 'Argminer.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
-# if IS_POSTGRES:
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#             'NAME': os.environ.get('DB_NAME'),
-#             'USER': os.environ.get('DB_USER'),
-#             'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-#             'HOST': os.environ.get("DB_HOST"),
-#             'PORT': os.environ.get('DB_PORT')
-#         }
-#     }
-# else:
-#     DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-# DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#             'NAME': 'postgres',
-#             'USER': 'postgres',
-#             'PASSWORD': 'srnthsrdhrn',
-#             'HOST': '10.1.76.118',
-#             'PORT': 5432
-#         }
-#     }
+if IS_DEV:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'postgres',
+            'USER': 'postgres',
+            'PASSWORD': 'srnthsrdhrn',
+            'HOST': '127.0.0.1',
+            'PORT': 5432
+        }
+    }
+elif IS_POSTGRES:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+            'HOST': os.environ.get("DB_HOST"),
+            'PORT': os.environ.get('DB_PORT')
+        }
+    }
+else:
+    DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
 
 
 
@@ -151,7 +154,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_ROOT = BASE_DIR/'media'
 MEDIA_URL = '/media/'
 
-CELERY_BROKER_URL = "redis://{}:6379".format(os.environ.get("CELERY_BROKER_URL", "10.1.76.118"))
+CELERY_BROKER_URL = "redis://{}:6379".format(os.environ.get("CELERY_BROKER_URL", "127.0.0.1"))
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 CELERY_BROKER_TRANSPORT = 'redis'
 

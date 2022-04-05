@@ -14,7 +14,7 @@ class Tweet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def parse_tweet_obj(self, tweet: TweetObj):
-        self.text = tweet.text
+        self.text = tweet._text
         self.like_count = tweet.like_count
         self.tweet_id = tweet.tweet_id
         self.retweet_count = tweet.retweet_count

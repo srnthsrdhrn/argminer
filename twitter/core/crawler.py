@@ -1,19 +1,17 @@
-from abc import ABC, abstractmethod
-from json import JSONEncoder
-from typing import Union, Any
+from abc import ABC
+from typing import  Any
 
 import tweepy
-from celery import shared_task
 from tqdm import tqdm
 from tweepy import AppAuthHandler, TweepError
 from tweepy.models import User as TweepyUser, Status
 
 from Argminer.celery import crawler_task
 from core.crawler import Crawler
-from core.dataset import DataPoint, Dataset
+from core.dataset import DataPoint
 from core.exceptions import NotSupportedException
-from twitter.core.dataset import Tweet, TwitterUser, TwitterDataset
-from twitter.models import Tweet as TweetDB, TwitterUser as TwitterUserDB, CrawlerTasks
+from twitter.core.dataset import Tweet, TwitterUser, TwitterDataset,Dataset
+from twitter.models import Tweet as TweetDB, TwitterUser as TwitterUserDB
 
 import logging
 
@@ -32,7 +30,7 @@ class TwitterCrawler(Crawler, ABC):
         self.consumer_secret = "akg4oPOUDkx0RDVwAtuwyNd8TbF7C9MHct5pD0gabQVFhllv0E" if consumer_secret is None else \
             consumer_secret
         self.auth = AppAuthHandler(consumer_key=self.consumer_key, consumer_secret=self.consumer_secret)
-        self.api = tweepy.API(self.auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        self.api = tweepy.API(self.auth, wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
 
     def fetch_tweets(self, keyword, tweet_count=100) -> tweepy.Cursor:
         return tweepy.Cursor(self.api.search, q=keyword, lang='en', count=tweet_count, extended=True,
@@ -58,6 +56,69 @@ class TwitterCrawler(Crawler, ABC):
             main_user.followers.append(user)
         return user_dataset
 
+    def get_full_text(self,tweet):
+        status = self.api.get_status(tweet.id, tweet_mode="extended")
+        try:
+            full_text = status.retweeted_status.full_text
+        except AttributeError:  # Not a Retweet
+            full_text = status.full_text
+        return full_text
+
+class ArgumentCrawler(TwitterCrawler):
+    def crawl(self,hashtag) -> None:
+        super().crawl()
+        tweets = self.fetch_tweets(hashtag)
+        tweet_dataset = TwitterDataset()
+        progress = tqdm()
+        while True:
+            try:
+                search_tweets = tweets.iterator.next()
+            except TweepError:
+                continue
+            except StopIteration:
+                break
+            for item in search_tweets:
+                item.full_text = self.get_full_text(item)
+                data = self._create_object(item,hashtag)
+                tweet_dataset.append(data)
+                # crawler_task.delay(parent_id=self.crawl_obj_id, starting_user=self.starting_user,
+                #                     crawl_friends=self.crawl_friends)
+                if self._is_useful_entity(data):
+                    pass
+                    # Todo: Need to decide on how to process a tweet. This is connected to is_useful_entity function.
+                self._process_entity(tweet_dataset)
+                progress.update()
+        progress.close()
+    
+    def _create_object(self, crawl_data: Any,hashtag:str) -> DataPoint:
+        if type(crawl_data) == TweepyUser:
+            user = TwitterUser()
+            user.parse_twitter_user(crawl_data)
+            return user
+        elif type(crawl_data) == Status:
+            tweet = Tweet()
+            tweet.parse_tweet_obj(hashtag, crawl_data)
+            return tweet
+        else:
+            raise NotSupportedException(f"The type {type(crawl_data)} is not supported.")
+    
+    def _process_entity(self, dataset: TwitterDataset):
+        if dataset.type == TwitterUser:
+            for user in dataset:
+                db_user = TwitterUserDB()
+                db_user.parse_twitter_user(user)
+        elif dataset.type == Tweet:
+            for tweet in dataset:
+                tweet : Tweet
+                db_tweet = TweetDB()
+                if not TweetDB.objects.filter(id=tweet.tweet_id).exists():
+                    db_tweet.parse_tweet_obj(tweet)
+        else:
+            raise NotSupportedException(f"Dataset type is not supported for processing. Received Type: {dataset.type}")
+    
+    def _is_useful_entity(self, dataset: Dataset) -> bool:
+        super()._is_useful_entity(dataset)
+        return True
 
 class CelebrityCrawler(TwitterCrawler):
     def __init__(self,

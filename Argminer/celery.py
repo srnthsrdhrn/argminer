@@ -23,11 +23,7 @@ app.autodiscover_tasks(settings.INSTALLED_APPS)
 
 
 @shared_task
-def crawler_task(parent_id=None, starting_user=None, starting_token=None, crawl_friends=False, follower_threshold=0) -> None:
-    from twitter.core.crawler import CelebrityCrawler
-    from twitter.models import CrawlerTasks
-    crawl_task = CrawlerTasks.objects.create(starting_user=starting_user, starting_token=starting_token,
-                                             crawl_friends=crawl_friends, parent_id=parent_id)
-    crawl_obj = CelebrityCrawler(starting_token=starting_token, starting_user=starting_user, crawl_friends=crawl_friends,
-                                 follower_threshold=follower_threshold, crawl_obj_id=crawl_task.id)
-    crawl_obj.crawl()
+def crawler_task(hashtag=None) -> None:
+    from twitter.core.crawler import ArgumentCrawler
+    crawl_obj = ArgumentCrawler()
+    crawl_obj.crawl(hashtag=hashtag)
